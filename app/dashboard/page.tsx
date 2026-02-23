@@ -116,7 +116,7 @@ export default async function DashboardPage() {
                       Merchant
                     </p>
                     <p className="mt-1 font-medium text-zinc-800">
-                      {tx.merchants?.merchant_name ?? "Unknown Merchant"}
+                    {tx.merchants?.[0]?.merchant_name ?? "Unknown Merchant"}
                     </p>
                   </div>
 

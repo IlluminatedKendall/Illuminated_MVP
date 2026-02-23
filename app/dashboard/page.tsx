@@ -7,7 +7,7 @@ type JoinedTransaction = {
   item_price: number | null;
   merchants: {
     merchant_name: string;
-  } | null;
+  } []| null;
 };
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {

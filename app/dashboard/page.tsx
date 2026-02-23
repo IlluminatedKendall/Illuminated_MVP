@@ -53,7 +53,7 @@ export default async function DashboardPage() {
     (sum, tx) => sum + Number(tx.item_price ?? 0),
     0
   );
-
+  const debugUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "MISSING_URL";
   return (
     <main className="min-h-screen bg-white">
       <div className="page-shell">
@@ -65,6 +65,7 @@ export default async function DashboardPage() {
             <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 md:text-5xl">
               Dashboard
             </h1>
+            <p className="text-red-500 text-sm mt-4">Debug URL: {debugUrl}</p>
           </div>
 
           <div className="section-card w-full max-w-sm border-neonPurple/25 bg-gradient-to-br from-white to-violet-50 shadow-glow">

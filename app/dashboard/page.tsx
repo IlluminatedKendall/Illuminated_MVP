@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 
 type JoinedTransaction = {
-  id: number;
+  item_id: string;
   item_name: string;
   item_cat_1: string | null;
   item_price: number | null;

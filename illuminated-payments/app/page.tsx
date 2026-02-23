@@ -5,6 +5,20 @@ export default function Home() {
     <div className="min-h-screen bg-white px-6 py-24 sm:px-10 lg:px-16">
       <main className="mx-auto flex min-h-[70vh] w-full max-w-6xl items-center justify-center rounded-3xl border border-slate-100 bg-white px-8 py-20 shadow-[0_25px_60px_-35px_rgba(124,58,237,0.25)] sm:px-16">
         <section className="w-full max-w-xl text-center">
+          <div className="mx-auto mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+              className="h-7 w-7 text-[#7c3aed]"
+            >
+              <path
+                d="M12 3L14.6 9.4L21 12L14.6 14.6L12 21L9.4 14.6L3 12L9.4 9.4L12 3Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+            </svg>
+          </div>
           <p className="mb-5 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
             FinTech MVP
           </p>

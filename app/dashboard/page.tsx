@@ -1,13 +1,23 @@
-import { supabase } from "@/lib/supabase";
 
-type JoinedTransaction = {
-  item_id: string;
+import { supabase } from "@/lib/supabase";
+import UploadReceipt from "./UploadReceipt";
+import TransactionList from "./TransactionList";
+export const dynamic = "force-dynamic";
+
+type TransactionItem = {
+  item_id: string | number;
   item_name: string;
-  item_cat_1: string | null;
   item_price: number | null;
+  item_cat_1: string | null;
+};
+
+type DashboardTransaction = {
+  id: string;
+  transaction_date: string | null;
   merchants: {
     merchant_name: string;
-  } []| null;
+  } | null;
+  items: TransactionItem[];
 };
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -21,28 +31,58 @@ function formatCurrency(value: number | null) {
 
 async function getTransactions() {
   const { data, error } = await supabase
-    .from("items")
+    .from("transactions")
     .select(
       `
-      item_id,
-      item_name,
-      item_cat_1,
-      item_price,
+      id,
+      transaction_date,
       merchants (
         merchant_name
+      ),
+      items (
+        item_id,
+        item_name,
+        item_price,
+        item_cat_1
       )
       `
-    );
+    )
+    .order("transaction_date", { ascending: false });
 
   if (error) {
     return {
-      transactions: [] as JoinedTransaction[],
+      transactions: [] as DashboardTransaction[],
       errorMessage: error.message
     };
   }
 
+  const normalizedTransactions = (data ?? []).map((tx) => {
+    const merchantValue = (tx as { merchants?: unknown }).merchants;
+    const itemsValue = (tx as { items?: unknown }).items;
+    const merchantObject = Array.isArray(merchantValue)
+      ? (merchantValue[0] as { merchant_name?: string } | undefined) ?? null
+      : (merchantValue as { merchant_name?: string } | null);
+    const normalizedItems = Array.isArray(itemsValue)
+      ? itemsValue.map((item) => ({
+          item_id: (item as { item_id?: string | number }).item_id ?? "",
+          item_name: String((item as { item_name?: string }).item_name ?? ""),
+          item_price: Number((item as { item_price?: number }).item_price ?? 0),
+          item_cat_1: String((item as { item_cat_1?: string }).item_cat_1 ?? "Uncategorized")
+        }))
+      : [];
+
+    return {
+      ...tx,
+      merchants:
+        merchantObject && merchantObject.merchant_name
+          ? { merchant_name: merchantObject.merchant_name }
+          : null,
+      items: normalizedItems
+    };
+  });
+
   return {
-    transactions: (data ?? []) as JoinedTransaction[],
+    transactions: normalizedTransactions as DashboardTransaction[],
     errorMessage: null
   };
 }
@@ -50,22 +90,23 @@ async function getTransactions() {
 export default async function DashboardPage() {
   const { transactions, errorMessage } = await getTransactions();
   const totalSpent = transactions.reduce(
-    (sum, tx) => sum + Number(tx.item_price ?? 0),
+    (sum, tx) =>
+      sum + tx.items.reduce((itemSum, item) => itemSum + Number(item.item_price ?? 0), 0),
     0
   );
-  const debugUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "MISSING_URL";
+  
   return (
     <main className="min-h-screen bg-white">
       <div className="page-shell">
         <header className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-neonPurple">
               Illuminated Payments
             </p>
             <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 md:text-5xl">
               Dashboard
             </h1>
-            <p className="text-red-500 text-sm mt-4">Debug URL: {debugUrl}</p>
+          
           </div>
 
           <div className="section-card w-full max-w-sm border-neonPurple/25 bg-gradient-to-br from-white to-violet-50 shadow-glow">
@@ -78,13 +119,15 @@ export default async function DashboardPage() {
           </div>
         </header>
 
+        <UploadReceipt />
+
         <section className="section-card">
           <div className="mb-6 flex items-center justify-between gap-4">
             <h2 className="text-xl font-semibold tracking-tight text-zinc-900">
               Recent Transactions
             </h2>
             <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-violet-700">
-              {transactions.length} records
+              {transactions.length} transactions
             </span>
           </div>
 
@@ -94,53 +137,10 @@ export default async function DashboardPage() {
             </p>
           ) : transactions.length === 0 ? (
             <p className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-6 text-sm text-zinc-500">
-              No transaction records found in `items`.
+              No transaction records found in `transactions`.
             </p>
           ) : (
-            <ul className="space-y-3">
-              {transactions.map((tx, index) => (
-                <li
-                 key={index}
-                  className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-100 bg-white p-4 md:grid-cols-4 md:items-center"
-                >
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-400">
-                      Item
-                    </p>
-                    <p className="mt-1 font-medium text-zinc-900">
-                      {tx.item_name}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-400">
-                      Merchant
-                    </p>
-                    <p className="mt-1 font-medium text-zinc-800">
-                    {tx.merchants?.[0]?.merchant_name ?? "Unknown Merchant"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-400">
-                      Category
-                    </p>
-                    <p className="mt-1 font-medium text-zinc-800">
-                      {tx.item_cat_1 ?? "Uncategorized"}
-                    </p>
-                  </div>
-
-                  <div className="md:text-right">
-                    <p className="text-xs uppercase tracking-wide text-zinc-400">
-                      Price
-                    </p>
-                    <p className="mt-1 text-lg font-semibold text-neonPurple">
-                      {formatCurrency(tx.item_price)}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <TransactionList transactions={transactions} />
           )}
         </section>
       </div>

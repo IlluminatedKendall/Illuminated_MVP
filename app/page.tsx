@@ -8,7 +8,7 @@ export default function LoginPage() {
           <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-neonPurple">
             Disruptive FinTech
           </p>
-          <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 md:text-6xl">
+          <h1 className="text-4xl font-semibold tracking-tight text-neonPurple md:text-6xl">
             Illuminated Payments
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-zinc-500 md:text-lg">
@@ -19,7 +19,7 @@ export default function LoginPage() {
 
         <Link
           href="/dashboard"
-          className="inline-flex items-center justify-center rounded-xl bg-neonPurple px-8 py-4 text-sm font-semibold tracking-wide text-white shadow-glow transition hover:-translate-y-0.5 hover:bg-violet-700"
+          className="inline-flex items-center justify-center rounded-xl bg-violet-600 px-8 py-4 text-sm font-semibold tracking-wide text-white shadow-glow transition hover:-translate-y-0.5 hover:bg-violet-700"
         >
           View Dashboard
         </Link>

@@ -1,7 +1,9 @@
 
-import { supabase } from "@/lib/supabase";
-import UploadReceipt from "./UploadReceipt";
+import { createClient } from "@/lib/supabase/server";
+import CategoryManager from "./CategoryManager";
+import LogoutButton from "./LogoutButton";
 import TransactionList from "./TransactionList";
+import UploadReceipt from "./UploadReceipt";
 export const dynamic = "force-dynamic";
 
 type TransactionItem = {
@@ -17,6 +19,7 @@ type DashboardTransaction = {
   merchants: {
     merchant_name: string;
   } | null;
+  user_categories: { name: string } | null;
   items: TransactionItem[];
 };
 
@@ -30,6 +33,7 @@ function formatCurrency(value: number | null) {
 }
 
 async function getTransactions() {
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("transactions")
     .select(
@@ -38,6 +42,9 @@ async function getTransactions() {
       transaction_date,
       merchants (
         merchant_name
+      ),
+      user_categories (
+        name
       ),
       items (
         item_id,
@@ -58,10 +65,14 @@ async function getTransactions() {
 
   const normalizedTransactions = (data ?? []).map((tx) => {
     const merchantValue = (tx as { merchants?: unknown }).merchants;
+    const categoryValue = (tx as { user_categories?: unknown }).user_categories;
     const itemsValue = (tx as { items?: unknown }).items;
     const merchantObject = Array.isArray(merchantValue)
       ? (merchantValue[0] as { merchant_name?: string } | undefined) ?? null
       : (merchantValue as { merchant_name?: string } | null);
+    const categoryObject = Array.isArray(categoryValue)
+      ? (categoryValue[0] as { name?: string } | undefined) ?? null
+      : (categoryValue as { name?: string } | null);
     const normalizedItems = Array.isArray(itemsValue)
       ? itemsValue.map((item) => ({
           item_id: (item as { item_id?: string | number }).item_id ?? "",
@@ -76,6 +87,10 @@ async function getTransactions() {
       merchants:
         merchantObject && merchantObject.merchant_name
           ? { merchant_name: merchantObject.merchant_name }
+          : null,
+      user_categories:
+        categoryObject && categoryObject.name
+          ? { name: categoryObject.name }
           : null,
       items: normalizedItems
     };
@@ -96,8 +111,12 @@ export default async function DashboardPage() {
   );
   
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-slate-50">
       <div className="page-shell">
+        <div className="mb-6 flex justify-end">
+          <LogoutButton />
+        </div>
+
         <header className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-neonPurple">
@@ -106,10 +125,9 @@ export default async function DashboardPage() {
             <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 md:text-5xl">
               Dashboard
             </h1>
-          
           </div>
 
-          <div className="section-card w-full max-w-sm border-neonPurple/25 bg-gradient-to-br from-white to-violet-50 shadow-glow">
+          <div className="section-card w-full max-w-sm border-violet-200/50 bg-white shadow-sm ring-1 ring-slate-200/50">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">
               Total Spent
             </p>
@@ -118,6 +136,19 @@ export default async function DashboardPage() {
             </p>
           </div>
         </header>
+
+        <section className="section-card mb-8">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">
+            Custom Categories
+          </p>
+          <h2 className="mb-3 text-lg font-semibold tracking-tight text-zinc-900">
+            Manage categories
+          </h2>
+          <p className="mb-4 text-sm text-zinc-500">
+            Create categories to organize your receipts. They will appear in the dropdown when uploading.
+          </p>
+          <CategoryManager />
+        </section>
 
         <UploadReceipt />
 
@@ -136,7 +167,7 @@ export default async function DashboardPage() {
               Could not load transactions: {errorMessage}
             </p>
           ) : transactions.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-6 text-sm text-zinc-500">
+            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
               No transaction records found in `transactions`.
             </p>
           ) : (

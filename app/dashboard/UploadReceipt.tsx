@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { Lightbulb } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type ReviewItem = {
@@ -26,12 +27,32 @@ export default function UploadReceipt() {
   const [merchantName, setMerchantName] = useState("");
   const [transactionDate, setTransactionDate] = useState("");
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
+  const [categoryId, setCategoryId] = useState<string>("");
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const isReviewing = reviewItems.length > 0;
+
+  const fetchCategories = useCallback(async () => {
+    setCategoriesLoading(true);
+    try {
+      const res = await fetch("/api/categories");
+      const payload = (await res.json()) as { categories?: { id: string; name: string }[] };
+      setCategories(payload.categories ?? []);
+      if (!payload.categories?.length) setCategoryId("");
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isReviewing) fetchCategories();
+  }, [isReviewing, fetchCategories]);
 
   function resetFlow() {
     setMerchantName("");
     setTransactionDate("");
     setReviewItems([]);
+    setCategoryId("");
     setFile(null);
     if (inputRef.current) {
       inputRef.current.value = "";
@@ -107,7 +128,8 @@ export default function UploadReceipt() {
         body: JSON.stringify({
           transaction_date: transactionDate,
           merchant_name: merchantName,
-          items: reviewItems
+          items: reviewItems,
+          category_id: categoryId.trim() || null
         })
       });
 
@@ -166,25 +188,25 @@ export default function UploadReceipt() {
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">
             AI Receipt Scan
           </p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900">
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
             Upload a receipt
           </h2>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-slate-500">
             Drop in a receipt image and we will extract the transaction automatically.
           </p>
         </div>
 
         {!isReviewing ? (
           <form onSubmit={handleUpload} className="space-y-4">
-            <label
-              htmlFor="receiptFile"
-              className="flex min-h-36 cursor-pointer items-center justify-center rounded-2xl border border-dashed border-violet-300 bg-violet-50/50 p-6 text-center transition hover:bg-violet-50"
-            >
+          <label
+            htmlFor="receiptFile"
+            className="flex min-h-36 cursor-pointer items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center transition hover:border-violet-300 hover:bg-violet-50/30"
+          >
               <div>
-                <p className="text-sm font-medium text-zinc-700">
+                <p className="text-sm font-medium text-slate-700">
                   {file ? file.name : "Choose a receipt image"}
                 </p>
-                <p className="mt-1 text-xs text-zinc-500">PNG, JPG, or WEBP</p>
+                <p className="mt-1 text-xs text-slate-500">PNG, JPG, or WEBP</p>
               </div>
             </label>
 
@@ -201,43 +223,66 @@ export default function UploadReceipt() {
             <button
               type="submit"
               disabled={!file || isScanning || isSaving}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:-translate-y-0.5 hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(124,58,237,0.4)] transition hover:-translate-y-0.5 hover:bg-violet-700 hover:shadow-[0_6px_20px_rgba(124,58,237,0.5)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
             >
-              {isScanning ? "Scanning with AI..." : "Scan Receipt"}
+              {isScanning ? (
+                <>
+                  <Lightbulb className="h-5 w-5 animate-pulse text-violet-200" strokeWidth={1.5} />
+                  Scanning with AI...
+                </>
+              ) : (
+                "Scan Receipt"
+              )}
             </button>
           </form>
         ) : (
           <div className="space-y-4">
             <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Review & Edit
               </p>
-              <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <label className="text-sm text-zinc-700">
+              <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <label className="text-sm text-slate-700">
                   Transaction Date
                   <input
                     type="date"
                     value={transactionDate}
                     onChange={(event) => setTransactionDate(event.target.value)}
-                    className="mt-2 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none ring-violet-300 transition focus:ring"
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-violet-300 transition focus:ring-2 focus:ring-violet-400"
                   />
                 </label>
-                <label className="text-sm text-zinc-700">
+                <label className="text-sm text-slate-700">
                   Merchant Name
                   <input
                     value={merchantName}
                     onChange={(event) => setMerchantName(event.target.value)}
-                    className="mt-2 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none ring-violet-300 transition focus:ring"
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-violet-300 transition focus:ring-2 focus:ring-violet-400"
                   />
+                </label>
+                <label className="text-sm text-slate-700">
+                  Category
+                  <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    disabled={categoriesLoading}
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-violet-300 transition focus:ring-2 focus:ring-violet-400 disabled:opacity-60"
+                  >
+                    <option value="">None</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
             </div>
 
             <div className="space-y-3">
               {reviewItems.map((item, index) => (
-                <div key={`${item.item_name}-${index}`} className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                <div key={`${item.item_name}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
                   <div className="mb-3 flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Line Item {index + 1}
                     </p>
                     <button
@@ -249,17 +294,17 @@ export default function UploadReceipt() {
                     </button>
                   </div>
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                    <label className="text-sm text-zinc-700">
+                    <label className="text-sm text-slate-700">
                       Item Name
                       <input
                         value={item.item_name}
                         onChange={(event) =>
                           updateItem(index, "item_name", event.target.value)
                         }
-                        className="mt-2 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none ring-violet-300 transition focus:ring"
+                        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-violet-300 transition focus:ring-2 focus:ring-violet-400"
                       />
                     </label>
-                    <label className="text-sm text-zinc-700">
+                    <label className="text-sm text-slate-700">
                       Price
                       <input
                         type="number"
@@ -268,17 +313,17 @@ export default function UploadReceipt() {
                         onChange={(event) =>
                           updateItem(index, "item_price", event.target.value)
                         }
-                        className="mt-2 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none ring-violet-300 transition focus:ring"
+                        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-violet-300 transition focus:ring-2 focus:ring-violet-400"
                       />
                     </label>
-                    <label className="text-sm text-zinc-700">
+                    <label className="text-sm text-slate-700">
                       Category
                       <input
                         value={item.item_cat_1}
                         onChange={(event) =>
                           updateItem(index, "item_cat_1", event.target.value)
                         }
-                        className="mt-2 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none ring-violet-300 transition focus:ring"
+                        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-violet-300 transition focus:ring-2 focus:ring-violet-400"
                       />
                     </label>
                   </div>
@@ -297,15 +342,22 @@ export default function UploadReceipt() {
                   !transactionDate.trim() ||
                   reviewItems.length === 0
                 }
-                className="inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:-translate-y-0.5 hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(124,58,237,0.4)] transition hover:-translate-y-0.5 hover:bg-violet-700 hover:shadow-[0_6px_20px_rgba(124,58,237,0.5)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
-                {isSaving ? "Saving..." : "Confirm & Save"}
+                {isSaving ? (
+                  <>
+                    <Lightbulb className="h-5 w-5 animate-pulse text-violet-200" strokeWidth={1.5} />
+                    Saving...
+                  </>
+                ) : (
+                  "Confirm & Save"
+                )}
               </button>
               <button
                 type="button"
                 onClick={resetFlow}
                 disabled={isSaving || isScanning}
-                className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>

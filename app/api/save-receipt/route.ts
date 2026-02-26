@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type SaveItemInput = {
   item_name: string;
@@ -12,9 +13,13 @@ type SaveReceiptPayload = {
   transaction_date: string;
   merchant_name: string;
   items: SaveItemInput[];
+  category_id?: string | null;
 };
 
-async function getOrCreateMerchantId(merchantName: string) {
+async function getOrCreateMerchantId(
+  supabase: SupabaseClient,
+  merchantName: string
+) {
   const cleanName = merchantName.trim();
   if (!cleanName) {
     throw new Error("merchant_name is required.");
@@ -61,10 +66,22 @@ async function getOrCreateMerchantId(merchantName: string) {
 
 export async function POST(request: Request) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = (await request.json()) as SaveReceiptPayload;
     const transactionDate = String(body?.transaction_date ?? "").trim();
     const merchantName = String(body?.merchant_name ?? "").trim();
     const items = Array.isArray(body?.items) ? body.items : [];
+    const categoryId = body?.category_id
+      ? String(body.category_id).trim() || null
+      : null;
 
     if (!transactionDate) {
       return NextResponse.json({ error: "transaction_date is required." }, { status: 400 });
@@ -78,13 +95,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "At least one item is required." }, { status: 400 });
     }
 
-    const merchantId = await getOrCreateMerchantId(merchantName);
+    const merchantId = await getOrCreateMerchantId(supabase, merchantName);
 
     const { data: insertedTransaction, error: insertTransactionError } = await supabase
       .from("transactions")
       .insert({
         merchant_id: merchantId,
-        transaction_date: transactionDate
+        transaction_date: transactionDate,
+        user_id: user.id,
+        ...(categoryId ? { category_id: categoryId } : {})
       })
       .select("*")
       .single();
